@@ -17,7 +17,7 @@
 
 
 ## General Information
-Program ini dibuat untuk mencari solusi (semua atau beberapa sekuens) permainan <i>Breach Protocol</i> dari gim Cyberpunk 2077. Program dimulai dengan mengberikan masukan ukuran buffer, lebar matriks, panjang matriks, matriks, jumlah sekuens, dan sekuens-sekuens yang dilanjutkan dengan bobot hadiahnya masing-masing. Karena setiap sekuens memiliki bobot yang berbeda-beda, maka diprioritaskan untuk mencari bobot hadiah terbesar sebagai solusi akhir dengan menggunakan algoritma <i>brute force</i>.
+Program ini dibuat untuk mencari solusi (semua atau beberapa sekuens) permainan <i>Breach Protocol</i> dari gim Cyberpunk 2077. Program dimulai dengan memberikan masukan ukuran buffer, lebar matriks, panjang matriks, matriks, jumlah sekuens, dan sekuens-sekuens yang dilanjutkan dengan bobot hadiahnya masing-masing. Karena setiap sekuens memiliki bobot yang berbeda-beda, maka diprioritaskan untuk mencari bobot hadiah terbesar sebagai solusi akhir dengan menggunakan algoritma <i>brute force</i>.
 
 
 ## Setup
@@ -25,7 +25,7 @@ Program ini dibuat untuk mencari solusi (semua atau beberapa sekuens) permainan 
 Needs g++ to compile the source code.
 
 ```shell
-g++ -Wall bruteforce.cpp -o a.exe
+g++ -Wall src/main.cpp -o bin/a.exe
 ```
 
 
@@ -34,7 +34,7 @@ g++ -Wall bruteforce.cpp -o a.exe
 To run, type:
 
 ```shell
-./a
+bin/a
 ```
 
 

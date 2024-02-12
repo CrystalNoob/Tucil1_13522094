@@ -2,10 +2,27 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <vector>
 #include <chrono>
 using namespace std;
 using namespace std::chrono;
+
+#define buff info[0]
+#define width info[1]
+#define height info[2]
+#define nseq info[3]
+
 typedef long long ll;
+typedef struct{
+    vector<string> seqLine;
+    ll reward;
+} Seq;
+
+// Global
+vector<ll> info;
+vector<vector<string>> mat;
+vector<Seq> seq;
+vector<string> uniqToken;
 
 void getPrompt(bool save, char *input, ll *normInput){
     do{
@@ -28,51 +45,84 @@ void getFileName(string *path){
 }
 
 int main(){
-    ll normInput, info[4] = {0}, temp;
+    system("CLS");
     char input;
+    ll normInput;
     string path, line;
-
-    getPrompt(0, &input, &normInput);
-    if(normInput == 121){
+    repeat:
+        getPrompt(0, &input, &normInput);
+    if(normInput == 121){ // Input by file
         getFileName(&path);
         ifstream inputFile(path);
         if(inputFile.is_open()){
-            int i = 0;
-            // Read the game's metadata
-            while(getline(inputFile, line) && i < 3){
+            ll i = 0;
+            // Read game's metadata
+            while(i < 3 && getline(inputFile, line)){
                 stringstream ss(line);
+                ll temp;
                 while(ss >> temp){
-                    info[i] = temp;
+                    info.push_back(temp);
                     // info[1] shall be the width and info[2] shall be the height
                     i++;
                 }
             }
-            ll mat[info[2]][info[1]];
-            i = 0;
+            printf("Buffer size: %lld\n", buff);
+            printf("Width: %lld\n", width);
+            printf("Height: %lld\n", height);
 
-            while(getline(inputFile, line) && i < info[2] + 3){
-                stringstream ss(line);
-                while(ss >> temp){
-                    mat[i][1] = temp;
-                    i++;
+            // Read the matrix
+            mat.resize(height, vector<string>(width));
+            for(i = 0; i < height; i++){
+                getline(inputFile, line);
+                for(int j = 0; j < width; j++){
+                    mat[i][j] = line.substr(3*j, 2);
+                    /*  "7A 55 E9 E9"
+                         ^  ^  ^  ^
+                    pos: 0123456789
+                    */
+                    cout << mat[i][j] << " ";
                 }
+                printf("\n");
             }
-            while(getline(inputFile, line) && i < info[2] + 3 + 1){
-                stringstream ss(line);
-                while(ss >> temp){
-                    info[4] = temp;
-                    i++;
+            // Read the seq's count
+            getline(inputFile, line);
+            stringstream ss(line);
+            ss >> info[3];
+            // info[3] shall be the nseq
+            printf("Number of sequences: %lld\n", nseq);
+            
+            // Read the sequences
+            seq.resize(nseq);
+            for(i = 0; i < nseq; i++){
+                getline(inputFile, line);
+                for(size_t j = 0; j < (line.length() + 1)/3; j++){
+                    string temp = line.substr(3*j, 2);
+                    seq[i].seqLine.push_back(temp);
+                    cout << seq[i].seqLine[j] << " ";
                 }
+                printf("\n");
+                getline(inputFile, line);
+                stringstream ss(line);
+                ss >> seq[i].reward;
+                cout << "Reward: " << seq[i].reward << "\n";
             }
-            printf("Buffer size: %lld\n", info[0]);
-            printf("Width: %lld\n", info[1]);
-            printf("Height: %lld\n", info[2]);
+            printf("\n");
+            inputFile.close();
         }
-        printf("\n");
-        inputFile.close();
+        else{
+            system("CLS");
+            printf("An attempt to read the file failed!\n");
+            goto repeat;
+        }
     }
-    else{
-
+    else{ // Random input, need generator
+        ll nToken;
+        printf("Jumlah token unik: ");
+        scanf("%lld", &nToken);
+        getline(cin, line);
+        for(int i = 0; i < nToken; i++){
+            //uniqToken.push_back()
+        }
     }
 
     // Timer start

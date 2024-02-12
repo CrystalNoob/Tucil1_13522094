@@ -17,12 +17,39 @@ typedef struct{
     vector<string> seqLine;
     ll reward;
 } Seq;
+typedef struct{
+    string str;
+    bool seen;
+} Elmt;
+
+class Coordinate{
+    public:
+        ll row;
+        ll col;
+        Coordinate(ll r, ll c){
+            row = r;
+            col = c;
+        }
+};
+
+class Sequence{
+    public:
+        string token;
+        vector<Coordinate> optPath;
+        ll reward;
+        Sequence(string t, vector<Coordinate> oP, ll r){
+            token = t;
+            optPath = oP;
+            reward = r;
+        }
+};
 
 // Global
 vector<ll> info;
-vector<vector<string>> mat;
-vector<Seq> seq;
+vector<vector<Elmt>> mat;
+vector<Seq> sequences;
 vector<string> uniqToken;
+vector<Sequence> optSeq;
 
 void getPrompt(bool save, char *input, ll *normInput){
     do{
@@ -42,6 +69,66 @@ void getFileName(string *path){
     cin >> temp;
     *path = *path + temp + ".txt";
     // assumes the file's extension is always .txt
+}
+
+void resetMat(){
+    for(int i = 0; i < height; i++){
+        for(int j = 0; j < width; j++){
+            mat[i][j].seen = false;
+        }
+    }
+}
+
+void fillMat(vector<Coordinate> coordinates){
+    for(size_t i = 0; i < coordinates.size(); i++){
+        mat[coordinates[i].row][coordinates[i].col].seen = true;
+    }
+}
+
+void tallyScore(Sequence *seq){
+    
+}
+
+void solver(ll *count, bool isVertical, Sequence *ans){
+    if(*count == 0){
+        optSeq.push_back(*ans);
+    }
+    else{
+        *count -= 1;
+        Coordinate adr = ans->optPath.back();;
+        if(isVertical){
+            for(int i = 0; i < height; i++){
+                resetMat();
+                fillMat(ans->optPath);
+                if(!mat[i][adr.col].seen){
+                    vector<Coordinate> temp;
+                    copy(ans->optPath.begin(), ans->optPath.end(), back_inserter(temp));
+                    auto seqTemp = Sequence(ans->token, temp, ans->reward);
+                    mat[i][adr.col].seen = true;
+                    seqTemp.token += " " + mat[i][adr.col].str;
+                    seqTemp.optPath.push_back(Coordinate(i, adr.col));
+                    tallyScore(&seqTemp);
+                    solver(count, true, &seqTemp);
+                }
+            }
+        }
+        else{
+            for(int i = 0; i < width; i++){
+                resetMat();
+                fillMat(ans->optPath);
+            if(!mat[adr.row][i].seen){
+                    vector<Coordinate> temp;
+                    copy(ans->optPath.begin(), ans->optPath.end(), back_inserter(temp));
+                    auto seqTemp = Sequence(ans->token, temp, ans->reward);
+                    mat[adr.row][i].seen = true;
+                    seqTemp.token += " " + mat[adr.row][i].str;
+                    seqTemp.optPath.push_back(Coordinate(adr.row, i));
+                    tallyScore(&seqTemp);
+                    solver(count, false, &seqTemp);
+                }
+            }
+        }
+    }
 }
 
 int main(){
@@ -71,16 +158,18 @@ int main(){
             printf("Height: %lld\n", height);
 
             // Read the matrix
-            mat.resize(height, vector<string>(width));
+            mat.resize(height, vector<Elmt>(width));
             for(i = 0; i < height; i++){
                 getline(inputFile, line);
-                for(int j = 0; j < width; j++){
-                    mat[i][j] = line.substr(3*j, 2);
+                for(ll j = 0; j < width; j++){
+                    mat[i][j].seen = false;
+                    mat[i][j].str = line.substr(3*j, 2);
                     /*  "7A 55 E9 E9"
                          ^  ^  ^  ^
                     pos: 0123456789
+                    this way of input has a weakness: cannot read false input -> program crashes immediately
                     */
-                    cout << mat[i][j] << " ";
+                    cout << mat[i][j].str << " ";
                 }
                 printf("\n");
             }
@@ -92,19 +181,19 @@ int main(){
             printf("Number of sequences: %lld\n", nseq);
             
             // Read the sequences
-            seq.resize(nseq);
+            sequences.resize(nseq);
             for(i = 0; i < nseq; i++){
                 getline(inputFile, line);
                 for(size_t j = 0; j < (line.length() + 1)/3; j++){
                     string temp = line.substr(3*j, 2);
-                    seq[i].seqLine.push_back(temp);
-                    cout << seq[i].seqLine[j] << " ";
+                    sequences[i].seqLine.push_back(temp);
+                    cout << sequences[i].seqLine[j] << " ";
                 }
                 printf("\n");
                 getline(inputFile, line);
                 stringstream ss(line);
-                ss >> seq[i].reward;
-                cout << "Reward: " << seq[i].reward << "\n";
+                ss >> sequences[i].reward;
+                printf("Reward: %lld\n", sequences[i].reward);
             }
             printf("\n");
             inputFile.close();
@@ -116,32 +205,58 @@ int main(){
         }
     }
     else{ // Random input, need generator
-        ll nToken;
+        ll nToken, buffTemp, widthTemp, heightTemp, nSeqTemp, maxSeq;
         printf("Jumlah token unik: ");
         scanf("%lld", &nToken);
+        cin.ignore();
         getline(cin, line);
-        for(int i = 0; i < nToken; i++){
-            //uniqToken.push_back()
+        for(ll i = 0; i < nToken; i++){
+            uniqToken.push_back(line.substr(3*i, 2));
         }
-    }
+        printf("Ukuran buffer: ");
+        scanf("%lld", &buffTemp);
+        printf("Lebar dan tinggi matrix: ");
+        scanf("%lld %lld", &widthTemp, &heightTemp);
+        // cin >> widthTemp >> heightTemp;
+        printf("Jumlah sekuens: ");
+        scanf("%lld", &nSeqTemp);
+        printf("Ukuran sekuens maksimal: ");
+        scanf("%lld", &maxSeq);
+        info.push_back(buffTemp); info.push_back(widthTemp);
+        info.push_back(heightTemp); info.push_back(nSeqTemp);
 
+        // Testing
+        getFileName(&path);
+        ofstream MyFile(path);
+        MyFile << nToken << "\n" << buffTemp << "\n";
+
+        for(size_t i = 0; i < uniqToken.size(); i++){
+            MyFile << uniqToken[i] << " ";
+        }
+        
+        MyFile << "\n" << widthTemp << " " << heightTemp << "\n" << nSeqTemp << "\n" << maxSeq << "\n";
+        MyFile.close();
+    }
     // Timer start
     auto start = high_resolution_clock::now();
     
-    // Bruteforce algo dummy
-    for(int i = 0; i < 1000000; i++){
-        continue;
+    // Bruteforce
+    for(ll i = 0; i < width; i++){
+        vector<Coordinate> steps;
+        steps.push_back(Coordinate(0, i));
+        auto temp = Sequence(mat[0][i].str, steps, 0);
+        solver(&buff, true, &temp);
     }
-
-
-
-
 
     // Timer stop
     auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start);
-    printf("%lld ms\n", duration.count());
+    auto duration = duration_cast<milliseconds>(stop - start);
 
+    printf("Score terbesar: %lld\n", 4);
+
+    printf("%lld ms\n", duration.count());
+    
+    // Write to file?
     getPrompt(1, &input, &normInput);
     if(normInput == 121){
         getFileName(&path);

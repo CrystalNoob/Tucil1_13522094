@@ -35,21 +35,24 @@ class Coordinate{
 class Sequence{
     public:
         string token;
-        vector<Coordinate> optPath;
+        vector<Coordinate> coordinates;
         ll reward;
         Sequence(string t, vector<Coordinate> oP, ll r){
             token = t;
-            optPath = oP;
+            coordinates = oP;
             reward = r;
         }
 };
+
+// Dummy
+vector<Coordinate> dumbPath;
 
 // Global
 vector<ll> info;
 vector<vector<Elmt>> mat;
 vector<Seq> sequences;
 vector<string> uniqToken;
-vector<Sequence> optSeq;
+Sequence solution("", dumbPath, 0);
 
 void getPrompt(bool save, char *input, ll *normInput){
     do{
@@ -86,45 +89,73 @@ void fillMat(vector<Coordinate> coordinates){
 }
 
 void tallyScore(Sequence *seq){
-    
+    seq->reward = 0;
+    for(size_t i = 0; i < sequences.size(); i++){
+        string temp = "";
+        for(size_t j = 0; j < sequences[i].seqLine.size(); j++){
+            temp = temp + sequences[i].seqLine[j] + " ";
+        }
+        size_t found = seq->token.find(temp);
+        int once = 0;
+        while(once < 1 && found != string::npos){
+            seq->reward += sequences[i].reward;
+            once++;
+        }
+    }
+    if(solution.reward < seq->reward){
+        solution.token = seq->token;
+        solution.coordinates = seq->coordinates;
+        solution.reward = seq->reward;
+    }
+    if((solution.reward == seq->reward) && (solution.token.length() > seq->token.length())){
+        solution.token = seq->token;
+        solution.coordinates = seq->coordinates;
+        solution.reward = seq->reward;
+    }
+}
+
+void displayCoordinate(Sequence seq){
+    for(size_t i = 0; i < solution.coordinates.size(); i++){
+        printf("%lld, %lld\n", solution.coordinates[i].col + 1, solution.coordinates[i].row + 1);
+    }
 }
 
 void solver(ll *count, bool isVertical, Sequence *ans){
-    if(*count == 0){
-        optSeq.push_back(*ans);
-    }
-    else{
+    if(*count != 0){
         *count -= 1;
-        Coordinate adr = ans->optPath.back();;
         if(isVertical){
-            for(int i = 0; i < height; i++){
+            auto adr = ans->coordinates.back();
+            auto adrCol = adr.col;
+            
+            for(ll i = 0; i < height; i++){
                 resetMat();
-                fillMat(ans->optPath);
-                if(!mat[i][adr.col].seen){
-                    vector<Coordinate> temp;
-                    copy(ans->optPath.begin(), ans->optPath.end(), back_inserter(temp));
-                    auto seqTemp = Sequence(ans->token, temp, ans->reward);
-                    mat[i][adr.col].seen = true;
-                    seqTemp.token += " " + mat[i][adr.col].str;
-                    seqTemp.optPath.push_back(Coordinate(i, adr.col));
+                fillMat(ans->coordinates);
+                if(!mat[i][adrCol].seen){
+                    vector<Coordinate> temp = ans->coordinates;
+                    Sequence seqTemp = Sequence(ans->token, temp, ans->reward);
+                    mat[i][adrCol].seen = true;
+                    seqTemp.token = seqTemp.token + " " + mat[i][adrCol].str;
+                    seqTemp.coordinates.push_back(Coordinate(i, adrCol));
                     tallyScore(&seqTemp);
-                    solver(count, true, &seqTemp);
+                    solver(count, false, &seqTemp);
                 }
             }
         }
         else{
-            for(int i = 0; i < width; i++){
+            auto adr = ans->coordinates.back();
+            auto adrRow = adr.row;
+
+            for(ll i = 0; i < width; i++){
                 resetMat();
-                fillMat(ans->optPath);
-            if(!mat[adr.row][i].seen){
-                    vector<Coordinate> temp;
-                    copy(ans->optPath.begin(), ans->optPath.end(), back_inserter(temp));
-                    auto seqTemp = Sequence(ans->token, temp, ans->reward);
-                    mat[adr.row][i].seen = true;
-                    seqTemp.token += " " + mat[adr.row][i].str;
-                    seqTemp.optPath.push_back(Coordinate(adr.row, i));
+                fillMat(ans->coordinates);
+                if(!mat[adrRow][i].seen){
+                    vector<Coordinate> temp = ans->coordinates;
+                    Sequence seqTemp = Sequence(ans->token, temp, ans->reward);
+                    mat[adrRow][i].seen = true;
+                    seqTemp.token = seqTemp.token + " " + mat[adrRow][i].str;
+                    seqTemp.coordinates.push_back(Coordinate(adrRow, i));
                     tallyScore(&seqTemp);
-                    solver(count, false, &seqTemp);
+                    solver(count, true, &seqTemp);
                 }
             }
         }
@@ -226,16 +257,16 @@ int main(){
         info.push_back(heightTemp); info.push_back(nSeqTemp);
 
         // Testing
-        getFileName(&path);
-        ofstream MyFile(path);
-        MyFile << nToken << "\n" << buffTemp << "\n";
+        // getFileName(&path);
+        // ofstream MyFile(path);
+        // MyFile << nToken << "\n" << buffTemp << "\n";
 
-        for(size_t i = 0; i < uniqToken.size(); i++){
-            MyFile << uniqToken[i] << " ";
-        }
+        // for(size_t i = 0; i < uniqToken.size(); i++){
+        //     MyFile << uniqToken[i] << " ";
+        // }
         
-        MyFile << "\n" << widthTemp << " " << heightTemp << "\n" << nSeqTemp << "\n" << maxSeq << "\n";
-        MyFile.close();
+        // MyFile << "\n" << widthTemp << " " << heightTemp << "\n" << nSeqTemp << "\n" << maxSeq << "\n";
+        // MyFile.close();
     }
     // Timer start
     auto start = high_resolution_clock::now();
@@ -244,7 +275,7 @@ int main(){
     for(ll i = 0; i < width; i++){
         vector<Coordinate> steps;
         steps.push_back(Coordinate(0, i));
-        auto temp = Sequence(mat[0][i].str, steps, 0);
+        Sequence temp = Sequence(mat[0][i].str, steps, 0);
         solver(&buff, true, &temp);
     }
 
@@ -252,7 +283,14 @@ int main(){
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
 
-    printf("Score terbesar: %lld\n", 4);
+    printf("Score maksimum: %lld\n", solution.reward);
+    if(solution.reward <= 0){
+        cout << "Tidak ada solusi optimal\n";
+    }
+    else{
+        cout << solution.token;
+        displayCoordinate(solution);
+    }
 
     printf("%lld ms\n", duration.count());
     
@@ -261,7 +299,13 @@ int main(){
     if(normInput == 121){
         getFileName(&path);
         ofstream MyFile(path);
-        MyFile << "Write success\n";
+        if(solution.reward > 0){
+            MyFile << solution.reward << "\n";
+            for(size_t i = 0; i < solution.coordinates.size(); i++){
+                MyFile << solution.coordinates[i].col+1 << "," << solution.coordinates[i].row+1 << "\n";
+            }
+        }
+        MyFile << "\n" << duration.count() << " ms";
         MyFile.close();
     }
 }

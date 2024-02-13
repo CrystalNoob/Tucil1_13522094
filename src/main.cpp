@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include <chrono>
+#include <algorithm>
 using namespace std;
 using namespace std::chrono;
 
@@ -22,41 +23,28 @@ typedef struct{
     bool seen;
 } Elmt;
 
-class Coordinate{
-    public:
-        ll row;
-        ll col;
-        Coordinate(ll r, ll c){
-            row = r;
-            col = c;
-        }
-};
-
 class Sequence{
     public:
-        string token;
-        vector<Coordinate> coordinates;
+        vector<ll> steps;
         ll reward;
-        Sequence(string t, vector<Coordinate> oP, ll r){
-            token = t;
-            coordinates = oP;
+        Sequence(string t, vector<ll> s, ll r){
+            steps = s;
             reward = r;
         }
 };
 
-// Dummy
-vector<Coordinate> dumbPath;
-
 // Global
 vector<ll> info;
-vector<vector<Elmt>> mat;
+vector<vector<string>> mat;
 vector<Seq> sequences;
 vector<string> uniqToken;
-Sequence solution("", dumbPath, 0);
+vector<ll> steps; // Empty arr
+Sequence optimum("", steps, 0);
+
 
 void getPrompt(bool save, char *input, ll *normInput){
     do{
-        printf((save) ? ("Apakah ingin menyimpan solusi? (y/n)\n") : ("Input dengan file? (y/n)\n"));
+        printf((save) ? ("\n\nApakah ingin menyimpan solusi? (y/n) ") : ("Input dengan file? (y/n) "));
         cin >> *input;
         *normInput = tolower(*input);
     }while(*normInput != 121 && *normInput != 110);
@@ -74,91 +62,107 @@ void getFileName(string *path){
     // assumes the file's extension is always .txt
 }
 
-void resetMat(){
-    for(int i = 0; i < height; i++){
-        for(int j = 0; j < width; j++){
-            mat[i][j].seen = false;
+void writeCoordinate(bool file, ofstream *MyFile, vector<ll> steps){
+    if(!file){
+        for(size_t i = 0; i < steps.size(); i++){
+            printf("%lld,%lld\n", steps[i % width] + 1, steps[i / width] + 1);
+        }
+    }
+    else{
+        for(size_t i = 0; i < steps.size(); i++){
+            *MyFile << steps[i % width] + 1 << "," << steps[i / width] + 1 << "\n";
         }
     }
 }
 
-void fillMat(vector<Coordinate> coordinates){
-    for(size_t i = 0; i < coordinates.size(); i++){
-        mat[coordinates[i].row][coordinates[i].col].seen = true;
+void writeRes(bool file, ofstream *MyFile, vector<ll> steps, duration<long long int, std::ratio<1, 1000>> duration){
+    if(file){    
+        *MyFile << optimum.reward << "\n";
+            if(optimum.reward > 0){
+                for(size_t i = 0; i < optimum.steps.size(); i++){
+                    *MyFile << mat[optimum.steps[i] / width][optimum.steps[i] % width] <<   " ";
+                }
+                *MyFile << "\n";
+                writeCoordinate(file, MyFile, optimum.steps);
+            }
+            *MyFile << "\n" << duration.count() << " ms";
+    }
+    else{
+        cout << optimum.reward << "\n";
+        if(optimum.reward > 0){
+            for(size_t i = 0; i < optimum.steps.size(); i++){
+                cout << mat[optimum.steps[i] / width][optimum.steps[i] %width] <<   " ";
+            }
+            cout << "\n";
+            writeCoordinate(file, MyFile, optimum.steps);
+        }
+        cout << "\n" << duration.count() << " ms";
     }
 }
 
-void tallyScore(Sequence *seq){
-    seq->reward = 0;
+void tallyScore(vector<ll> path){
+    ll score = 0;
+    string str = "";
+    for(size_t i = 0; i < path.size(); i++){
+        str.append(mat[path[i] / width][path[i] % width]);
+    }
     for(size_t i = 0; i < sequences.size(); i++){
         string temp = "";
         for(size_t j = 0; j < sequences[i].seqLine.size(); j++){
-            temp = temp + sequences[i].seqLine[j] + " ";
+            temp.append(sequences[i].seqLine[j]);
         }
-        size_t found = seq->token.find(temp);
-        int once = 0;
-        while(once < 1 && found != string::npos){
-            seq->reward += sequences[i].reward;
-            once++;
+        if(str.find(temp) != string::npos){
+            score += sequences[i].reward;
         }
     }
-    if(solution.reward < seq->reward){
-        solution.token = seq->token;
-        solution.coordinates = seq->coordinates;
-        solution.reward = seq->reward;
+    if(optimum.reward < score){
+        optimum.reward = score;
+        optimum.steps = path;
     }
-    if((solution.reward == seq->reward) && (solution.token.length() > seq->token.length())){
-        solution.token = seq->token;
-        solution.coordinates = seq->coordinates;
-        solution.reward = seq->reward;
+    if(optimum.reward == score && path.size() < optimum.steps.size()){
+        optimum.reward = score;
+        optimum.steps = path;
     }
 }
 
-void displayCoordinate(Sequence seq){
-    for(size_t i = 0; i < solution.coordinates.size(); i++){
-        printf("%lld, %lld\n", solution.coordinates[i].col + 1, solution.coordinates[i].row + 1);
+void solver(vector<ll> path){
+    ll mod;
+    bool isVertical = true;
+    if(!path.size()){
+        for(ll i = 0;i < width; i++){
+            path = {};
+            path.push_back(i);
+            solver(path);
+        }
     }
-}
-
-void solver(ll *count, bool isVertical, Sequence *ans){
-    if(*count != 0){
-        *count -= 1;
-        if(isVertical){
-            auto adr = ans->coordinates.back();
-            auto adrCol = adr.col;
-            
-            for(ll i = 0; i < height; i++){
-                resetMat();
-                fillMat(ans->coordinates);
-                if(!mat[i][adrCol].seen){
-                    vector<Coordinate> temp = ans->coordinates;
-                    Sequence seqTemp = Sequence(ans->token, temp, ans->reward);
-                    mat[i][adrCol].seen = true;
-                    seqTemp.token = seqTemp.token + " " + mat[i][adrCol].str;
-                    seqTemp.coordinates.push_back(Coordinate(i, adrCol));
-                    tallyScore(&seqTemp);
-                    solver(count, false, &seqTemp);
-                }
+    else if(path.size() == (size_t) buff){
+        tallyScore(path);
+    }
+    else if(isVertical){
+        mod = path.back() % width;
+        for(ll i = 0; i < height; i++){
+            vector<ll> newPath;
+            if(find(path.begin(), path.end(), (width * i) + mod) == path.end()){
+                newPath = path;
+                newPath.push_back((width * i) + mod);
+                solver(newPath);
             }
         }
-        else{
-            auto adr = ans->coordinates.back();
-            auto adrRow = adr.row;
-
-            for(ll i = 0; i < width; i++){
-                resetMat();
-                fillMat(ans->coordinates);
-                if(!mat[adrRow][i].seen){
-                    vector<Coordinate> temp = ans->coordinates;
-                    Sequence seqTemp = Sequence(ans->token, temp, ans->reward);
-                    mat[adrRow][i].seen = true;
-                    seqTemp.token = seqTemp.token + " " + mat[adrRow][i].str;
-                    seqTemp.coordinates.push_back(Coordinate(adrRow, i));
-                    tallyScore(&seqTemp);
-                    solver(count, true, &seqTemp);
-                }
+        isVertical = false;
+        tallyScore(path);
+    }
+    else if(!isVertical){
+        mod = (path.back() / width) * width;
+        for(ll i = mod; i < mod + width; i++){
+            vector<ll> newPath;
+            if(find(path.begin(), path.end(), i) == path.end()){
+                newPath = path;
+                newPath.push_back(i);
+                solver(newPath);
             }
         }
+        isVertical = true;
+        tallyScore(path);
     }
 }
 
@@ -189,18 +193,17 @@ int main(){
             printf("Height: %lld\n", height);
 
             // Read the matrix
-            mat.resize(height, vector<Elmt>(width));
+            mat.resize(height, vector<string>(width));
             for(i = 0; i < height; i++){
                 getline(inputFile, line);
                 for(ll j = 0; j < width; j++){
-                    mat[i][j].seen = false;
-                    mat[i][j].str = line.substr(3*j, 2);
+                    mat[i][j] = line.substr(3*j, 2);
                     /*  "7A 55 E9 E9"
                          ^  ^  ^  ^
                     pos: 0123456789
                     this way of input has a weakness: cannot read false input -> program crashes immediately
                     */
-                    cout << mat[i][j].str << " ";
+                    cout << mat[i][j] << " ";
                 }
                 printf("\n");
             }
@@ -256,6 +259,28 @@ int main(){
         info.push_back(buffTemp); info.push_back(widthTemp);
         info.push_back(heightTemp); info.push_back(nSeqTemp);
 
+        srand(time(nullptr));
+        string token[nToken];
+        sequences.resize(nseq);
+        for(ll i = 0; i < height; i++){
+            vector<string> temp = {};
+            for(ll j= 0;j < width; j++){
+                temp.push_back(token[rand() % nToken]); // 0 to nToken-1
+            }
+            mat.push_back(temp);
+        }
+
+        for(ll i = 0; i < nseq; i++){
+            string temp = "";
+            ll randTokenLength = rand() % maxSeq + 1; // 1 to maxSeq
+            for(ll j = 0; j < randTokenLength; j++){
+                temp += token[rand() % nToken];       // 0 to nToken-1
+            }
+            sequences[i].seqLine.push_back(temp);
+            sequences[i].reward = rand() % 100 + 1;   // 1 to 100
+        }
+
+
         // Testing
         // getFileName(&path);
         // ofstream MyFile(path);
@@ -273,39 +298,22 @@ int main(){
     
     // Bruteforce
     for(ll i = 0; i < width; i++){
-        vector<Coordinate> steps;
-        steps.push_back(Coordinate(0, i));
-        Sequence temp = Sequence(mat[0][i].str, steps, 0);
-        solver(&buff, true, &temp);
+        solver({});
     }
 
     // Timer stop
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
 
-    printf("Score maksimum: %lld\n", solution.reward);
-    if(solution.reward <= 0){
-        cout << "Tidak ada solusi optimal\n";
-    }
-    else{
-        cout << solution.token;
-        displayCoordinate(solution);
-    }
-
-    printf("%lld ms\n", duration.count());
+    printf("Score maksimum: %lld\n", optimum.reward);
+    writeRes(false, NULL, steps, duration);
     
     // Write to file?
     getPrompt(1, &input, &normInput);
     if(normInput == 121){
         getFileName(&path);
         ofstream MyFile(path);
-        if(solution.reward > 0){
-            MyFile << solution.reward << "\n";
-            for(size_t i = 0; i < solution.coordinates.size(); i++){
-                MyFile << solution.coordinates[i].col+1 << "," << solution.coordinates[i].row+1 << "\n";
-            }
-        }
-        MyFile << "\n" << duration.count() << " ms";
+        writeRes(true, &MyFile, steps, duration);
         MyFile.close();
     }
 }
